@@ -55,17 +55,17 @@ export async function saveKey(options: saveOptions, log = true) {
 
   // let's doublecheck and make sure the key we are saving is the right type based on the decryption strategy
   if (key) {
-    if (decryptStrategyType === PRIVATE_KEY_TYPE && key.startsWith('-----BEGIN RSA PUBLIC KEY-----')) {
+    if (decryptStrategyType === PRIVATE_KEY_TYPE && !key.startsWith('-----BEGIN RSA PRIVATE KEY-----')) {
       if (log) {
-        p.log.error(`The decryption strategy is: ${decryptStrategyType} and the key is a public key`)
+        p.log.error(`The decryption strategy is: 'private' and the decryption key provided is not a private key`)
         program.error('')
       } else {
         return false;
       }
     } 
-    if (decryptStrategyType !== PRIVATE_KEY_TYPE && key.startsWith('-----BEGIN RSA PRIVATE KEY-----')) {
+    if (decryptStrategyType !== PRIVATE_KEY_TYPE && !key.startsWith('-----BEGIN RSA PUBLIC KEY-----')) {
       if (log) {
-        p.log.error(`The decryption strategy is: ${decryptStrategyType} and the key is a private key`)
+        p.log.error(`The decryption strategy is: 'public' and the decryption key provided is not a public key`)
         program.error('')
       } else {
         return false;
@@ -105,7 +105,7 @@ export async function saveKey(options: saveOptions, log = true) {
     writeConfig(extConfig, config.app.extConfigFilePath)
   }
   if (log) {
-    p.log.success(`${decryptStrategyType === PRIVATE_KEY_TYPE ? PUBLIC_KEY_TYPE : PRIVATE_KEY_TYPE} key saved into ${config.app.extConfigFilePath} file in local directory`)
+    p.log.success(`${decryptStrategyType === PRIVATE_KEY_TYPE ? PRIVATE_KEY_TYPE : PUBLIC_KEY_TYPE} key saved into ${config.app.extConfigFilePath} file in local directory`)
     p.log.success(`your app will decode the zip archive with this key`)
   }
   return true

@@ -75,12 +75,12 @@ export async function encryptZip(zipPath: string, options: Options) {
 
   // let's doublecheck and make sure the key we are using is the right type based on the decryption strategy
   if (key) {
-    if (decryptStrategyType === PRIVATE_KEY_TYPE && key.startsWith('-----BEGIN RSA PRIVATE KEY-----')) {
-      p.log.error(`The decryption strategy is: ${decryptStrategyType} and the key is not a public key`)
+    if (decryptStrategyType === PRIVATE_KEY_TYPE && !key.startsWith('-----BEGIN RSA PUBLIC KEY-----')) {
+      p.log.error(`The decryption strategy is: 'private' and the encryption key provided is not a public key`)
       program.error('')
     } 
-    if (decryptStrategyType !== PRIVATE_KEY_TYPE && key.startsWith('-----BEGIN RSA PUBLIC KEY-----')) {
-      p.log.error(`The decryption strategy is: ${decryptStrategyType} and the key is not a private key`)
+    if (decryptStrategyType !== PRIVATE_KEY_TYPE && !key.startsWith('-----BEGIN RSA PRIVATE KEY-----')) {
+      p.log.error(`The decryption strategy is: 'public' and the encryption key provided is not a private key`)
       program.error('')
     }
   }
