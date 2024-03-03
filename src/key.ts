@@ -97,6 +97,7 @@ export async function saveKey(options: saveOptions, log = true) {
       }
     }
     
+    //TODO: this might be a breaking change if user has other code looking at the specific value in the config file
     if (extConfig.plugins.CapacitorUpdater.privateKey) delete extConfig.plugins.CapacitorUpdater.privateKey;
     extConfig.plugins.CapacitorUpdater.decryptStrategy.key = key;
 
@@ -174,6 +175,7 @@ export async function createKey(options: Options, log = true) {
       }
     }
     
+    //TODO: this might be a breaking change if user has other code looking at the specific value in the config file
     if (extConfig.plugins.CapacitorUpdater.privateKey) delete extConfig.plugins.CapacitorUpdater.privateKey;
 
     decryptStrategyType = extConfig.plugins.CapacitorUpdater.decryptStrategy.type;
