@@ -18,15 +18,15 @@ const formatB64 = 'base64'
 const publicEncryptPadding = constants.RSA_PKCS1_OAEP_PADDING
 const privateEncryptPadding = constants.RSA_PKCS1_PADDING;
 
-export function decryptSource(source: Buffer, ivSessionKey: string, key: string, keyType: keyType): Buffer {
-  // console.log('keyType - ', keyType);
+export function decryptSource(source: Buffer, ivSessionKey: string, key: string, decryptKeyType: keyType): Buffer {
+  // console.log('decryptKeyType - ', decryptKeyType);
   // console.log(key);
   // console.log('\nivSessionKey', ivSessionKey)
   const [ivB64, sessionb64Encrypted] = ivSessionKey.split(':')
   // console.log('\nsessionb64Encrypted', sessionb64Encrypted)
   // console.log('\nivB64', ivB64)
   let sessionKey: Buffer;
-  if (keyType === PRIVATE_KEY_TYPE) {
+  if (decryptKeyType === PRIVATE_KEY_TYPE) {
     sessionKey = privateDecrypt(
       {
         key,
@@ -58,8 +58,8 @@ export interface Encoded {
   ivSessionKey: string
   encryptedData: Buffer
 }
-export function encryptSource(source: Buffer, key: string, keyType: keyType): Encoded {
-  // console.log('keyType - ', keyType);
+export function encryptSource(source: Buffer, key: string, decryptKeyType: keyType): Encoded {
+  // console.log('decryptKeyType - ', decryptKeyType);
   // console.log(key);
 
   // encrypt zip with key
@@ -76,7 +76,7 @@ export function encryptSource(source: Buffer, key: string, keyType: keyType): En
   // console.log('\nivB64', ivB64)
 
   let sessionb64Encrypted;
-  if (keyType === PRIVATE_KEY_TYPE) {
+  if (decryptKeyType === PRIVATE_KEY_TYPE) {
     sessionb64Encrypted = publicEncrypt(
       {
         key,
