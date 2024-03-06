@@ -3,8 +3,6 @@ import {
   createCipheriv,
   createDecipheriv,
   generateKeyPairSync,
-  privateDecrypt,
-  publicEncrypt,
   randomBytes,
   publicDecrypt,
   privateEncrypt
@@ -14,8 +12,6 @@ import { Buffer } from 'node:buffer'
 const algorithm = 'aes-128-cbc'
 const oaepHash = 'sha256'
 const formatB64 = 'base64'
-const publicEncryptPadding = constants.RSA_PKCS1_OAEP_PADDING
-const privateEncryptPadding = constants.RSA_PKCS1_PADDING;
 const padding = constants.RSA_PKCS1_PADDING
 
 export function decryptSource(source: Buffer, ivSessionKey: string, key: string): Buffer {
