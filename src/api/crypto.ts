@@ -10,7 +10,6 @@ import {
 import { Buffer } from 'node:buffer'
 
 const algorithm = 'aes-128-cbc'
-const oaepHash = 'sha256'
 const formatB64 = 'base64'
 const padding = constants.RSA_PKCS1_PADDING
 
