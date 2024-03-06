@@ -349,9 +349,6 @@ export async function findMainFile() {
   return mainFile
 }
 
-export const PUBLIC_KEY_TYPE = 'public';
-export const PRIVATE_KEY_TYPE = 'private';
-export type keyType = typeof PUBLIC_KEY_TYPE | typeof PRIVATE_KEY_TYPE;
 interface Config {
   app: {
     appId: string
@@ -377,10 +374,6 @@ interface Config {
           updateUrl?: string
           privateKey?: string
           publicKey?: string
-          decryptStrategy?: {
-            type: keyType
-            key?: string
-          }
         }
       }
       server: {

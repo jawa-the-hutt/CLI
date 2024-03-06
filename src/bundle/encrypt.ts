@@ -5,7 +5,7 @@ import ciDetect from 'ci-info'
 import * as p from '@clack/prompts'
 import { checkLatest } from '../api/update'
 import { encryptSource } from '../api/crypto'
-import { baseKey, baseKeyPub, getLocalConfig, getConfig, keyType, PUBLIC_KEY_TYPE, PRIVATE_KEY_TYPE } from '../utils'
+import { baseKey, getLocalConfig, getConfig } from '../utils'
 
 interface Options {
   key?: string
@@ -18,22 +18,15 @@ export async function encryptZip(zipPath: string, options: Options) {
   await checkLatest()
   const localConfig = await getLocalConfig()
   const config = await getConfig()
+  const { extConfig } = config.app
   // console.log('localConfig - ', localConfig)
   // console.log('config - ', config)
 
-  let decryptStrategy;
-  let decryptStrategyType: keyType = PRIVATE_KEY_TYPE;
-  const hasPrivateKeyInConfig = config?.app?.extConfig?.plugins?.CapacitorUpdater?.privateKey ? true : false
-  // console.log(`There ${hasPrivateKeyInConfig ? 'IS' : 'IS NOT'} a privateKey in the config`);
+  const hasPrivateKeyInConfig = extConfig?.plugins?.CapacitorUpdater?.privateKey ? true : false
+  const hasPublicKeyInConfig = extConfig?.plugins?.CapacitorUpdater?.publicKey ? true : false
 
-  const hasDecryptStrategyInConfig = config?.app?.extConfig?.plugins?.CapacitorUpdater?.decryptStrategy?.type && config?.app?.extConfig?.plugins?.CapacitorUpdater?.decryptStrategy?.key ? true : false
-  // console.log(`There ${hasDecryptStrategyInConfig ? 'IS' : 'IS NOT'} a decryptStrategy in the config`);
-  if (!hasPrivateKeyInConfig && hasDecryptStrategyInConfig) {
-    decryptStrategy = config.app.extConfig.plugins.CapacitorUpdater.decryptStrategy;
-    if (decryptStrategy) decryptStrategyType = decryptStrategy.type;
-  }
-  // console.log('decryptStrategyType - ', decryptStrategyType);
-  p.log.message(`Decrypt Type - ${decryptStrategyType}`)
+  if (hasPrivateKeyInConfig)
+    p.log.warning(`There is still a privateKey in the config`)
 
   // write in file .capgo the apikey in home directory
 
@@ -42,51 +35,44 @@ export async function encryptZip(zipPath: string, options: Options) {
     program.error('')
   }
 
-  if (!hasPrivateKeyInConfig && !hasDecryptStrategyInConfig) {
-    p.log.error(`Error: Missing Encryption Keys in config`)
-    program.error('')
+  if (!hasPublicKeyInConfig) {
+    p.log.warning(`Warning: Missing Public Key in config`)
   }
 
-  const keyPath = options.key || hasPrivateKeyInConfig ? baseKeyPub : decryptStrategyType === PRIVATE_KEY_TYPE ? baseKeyPub : baseKey
+  const keyPath = options.key || baseKey
   // check if publicKey exist
 
   //let publicKey = options.keyData || ''
-  let key = options.keyData || ''
+  let privateKey = options.keyData || ''
 
-  if (!existsSync(keyPath) && !key) {
-    p.log.warning(`Cannot find ${decryptStrategyType === PRIVATE_KEY_TYPE ? PUBLIC_KEY_TYPE : PRIVATE_KEY_TYPE} key ${keyPath} or as keyData option`)
+  if (!existsSync(keyPath) && !privateKey) {
+    p.log.warning(`Cannot find a private key at ${keyPath} or as a keyData option`)
     if (ciDetect.isCI) {
-      p.log.error(`Error: Missing ${decryptStrategyType === PRIVATE_KEY_TYPE ? PUBLIC_KEY_TYPE : PRIVATE_KEY_TYPE} key`)
+      p.log.error(`Error: Missing key`)
       program.error('')
     }
-    const res = await p.confirm({ message: `Do you want to use our ${decryptStrategyType === PRIVATE_KEY_TYPE ? PUBLIC_KEY_TYPE : PRIVATE_KEY_TYPE} key ?` })
+    const res = await p.confirm({ message: `Do you want to use our private key?` })
     if (!res) {
-      p.log.error(`Error: Missing ${decryptStrategyType === PRIVATE_KEY_TYPE ? PUBLIC_KEY_TYPE : PRIVATE_KEY_TYPE} key`)
+      p.log.error(`Error: Missing private key`)
       program.error('')
     }
-    //TODO: based on the other changes and which decrypt strategy they choose, we probably need to determine which signKey is being passed back here?
-    key = localConfig.signKey || ''
+
+    privateKey = localConfig.signKey || ''
   }
   else if (existsSync(keyPath)) {
     // open with fs key path
     const keyFile = readFileSync(keyPath)
-    key = keyFile.toString()
+    privateKey = keyFile.toString()
   }
 
   // let's doublecheck and make sure the key we are using is the right type based on the decryption strategy
-  if (key) {
-    if (decryptStrategyType === PRIVATE_KEY_TYPE && !key.startsWith('-----BEGIN RSA PUBLIC KEY-----')) {
-      p.log.error(`The decryption strategy is: 'private' and the encryption key provided is not a public key`)
+  if (privateKey && !privateKey.startsWith('-----BEGIN RSA PRIVATE KEY-----')) {
+      p.log.error(`the private key provided is not a valid RSA Private key`)
       program.error('')
-    } 
-    if (decryptStrategyType !== PRIVATE_KEY_TYPE && !key.startsWith('-----BEGIN RSA PRIVATE KEY-----')) {
-      p.log.error(`The decryption strategy is: 'public' and the encryption key provided is not a private key`)
-      program.error('')
-    }
   }
 
   const zipFile = readFileSync(zipPath)
-  const encodedZip = encryptSource(zipFile, key, decryptStrategyType)
+  const encodedZip = encryptSource(zipFile, privateKey)
   p.log.success(`ivSessionKey: ${encodedZip.ivSessionKey}`)
   // write decodedZip in a file
   writeFileSync(`${zipPath}_encrypted.zip`, encodedZip.encryptedData)

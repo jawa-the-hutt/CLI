@@ -10,15 +10,15 @@ import {
   privateEncrypt
 } from 'node:crypto'
 import { Buffer } from 'node:buffer'
-import { keyType, PRIVATE_KEY_TYPE } from '../utils'
 
 const algorithm = 'aes-128-cbc'
 const oaepHash = 'sha256'
 const formatB64 = 'base64'
 const publicEncryptPadding = constants.RSA_PKCS1_OAEP_PADDING
 const privateEncryptPadding = constants.RSA_PKCS1_PADDING;
+const padding = constants.RSA_PKCS1_PADDING
 
-export function decryptSource(source: Buffer, ivSessionKey: string, key: string, decryptKeyType: keyType): Buffer {
+export function decryptSource(source: Buffer, ivSessionKey: string, key: string): Buffer {
   // console.log('decryptKeyType - ', decryptKeyType);
   // console.log(key);
   // console.log('\nivSessionKey', ivSessionKey)
@@ -26,24 +26,14 @@ export function decryptSource(source: Buffer, ivSessionKey: string, key: string,
   // console.log('\nsessionb64Encrypted', sessionb64Encrypted)
   // console.log('\nivB64', ivB64)
   let sessionKey: Buffer;
-  if (decryptKeyType === PRIVATE_KEY_TYPE) {
-    sessionKey = privateDecrypt(
-      {
-        key,
-        padding: publicEncryptPadding,
-        oaepHash,
-      },
-      Buffer.from(sessionb64Encrypted, formatB64),
-    )
-  } else {
-    sessionKey = publicDecrypt(
-      {
-        key,
-        padding: privateEncryptPadding
-      },
-      Buffer.from(sessionb64Encrypted, formatB64),
-    )
-  }
+  sessionKey = publicDecrypt(
+    {
+      key,
+      padding
+    },
+    Buffer.from(sessionb64Encrypted, formatB64),
+  )
+
   // ivB64 to uft-8
   const initVector = Buffer.from(ivB64, formatB64)
   // console.log('\nSessionB64', sessionB64)
@@ -58,7 +48,7 @@ export interface Encoded {
   ivSessionKey: string
   encryptedData: Buffer
 }
-export function encryptSource(source: Buffer, key: string, decryptKeyType: keyType): Encoded {
+export function encryptSource(source: Buffer, key: string): Encoded {
   // console.log('decryptKeyType - ', decryptKeyType);
   // console.log(key);
 
@@ -76,24 +66,14 @@ export function encryptSource(source: Buffer, key: string, decryptKeyType: keyTy
   // console.log('\nivB64', ivB64)
 
   let sessionb64Encrypted;
-  if (decryptKeyType === PRIVATE_KEY_TYPE) {
-    sessionb64Encrypted = publicEncrypt(
-      {
-        key,
-        padding: publicEncryptPadding,
-        oaepHash,
-      },
-      sessionKey,
-    ).toString(formatB64)
-  } else {
-    sessionb64Encrypted = privateEncrypt(
-      {
-        key,
-        padding: privateEncryptPadding
-      },
-      sessionKey,
-    ).toString(formatB64)
-  }
+  sessionb64Encrypted = privateEncrypt(
+    {
+      key,
+      padding
+    },
+    sessionKey,
+  ).toString(formatB64)
+
   // console.log('\nsessionb64Encrypted', sessionb64Encrypted)
   const ivSessionKey = `${ivB64}:${sessionb64Encrypted}`
   // console.log('\nivSessionKey', sessionKey)

@@ -3,7 +3,7 @@ import process from 'node:process'
 import { program } from 'commander'
 import * as p from '@clack/prompts'
 import { decryptSource } from '../api/crypto'
-import { baseKey, baseKeyPub, getConfig, keyType, PUBLIC_KEY_TYPE, PRIVATE_KEY_TYPE } from '../utils'
+import { baseKeyPub, getConfig } from '../utils'
 import { checkLatest } from '../api/update'
 
 interface Options {
@@ -26,59 +26,40 @@ export async function decryptZip(zipPath: string, ivsessionKey: string, options:
   // console.log('config - ', config)
   // console.log('extConfig - ', extConfig)
 
-  let decryptStrategy;
-  let decryptStrategyType: keyType = PRIVATE_KEY_TYPE;
   const hasPrivateKeyInConfig = extConfig?.plugins?.CapacitorUpdater?.privateKey ? true : false
   // console.log(`There ${hasPrivateKeyInConfig ? 'IS' : 'IS NOT'} a privateKey in the config`);
 
-  const hasDecryptStrategyInConfig = extConfig?.plugins?.CapacitorUpdater?.decryptStrategy?.type && extConfig?.plugins?.CapacitorUpdater?.decryptStrategy?.key ? true : false
-  // console.log(`There ${hasDecryptStrategyInConfig ? 'IS' : 'IS NOT'} a decryptStrategy in the config`);
-  if (!hasPrivateKeyInConfig && hasDecryptStrategyInConfig) {
-    decryptStrategy = config.app.extConfig.plugins.CapacitorUpdater.decryptStrategy;
-    if (decryptStrategy) decryptStrategyType = decryptStrategy.type;
-  }
-  // console.log('decryptStrategyType - ', decryptStrategyType);
-  p.log.message(`Decrypt Type - ${decryptStrategyType}`)
+  if (hasPrivateKeyInConfig)
+    p.log.warning(`There is still a privateKey in the config`)
 
-  if (!hasPrivateKeyInConfig && !hasDecryptStrategyInConfig) {
-    p.log.error(`Error: Missing Encryption Keys in config`)
+  if (!options.key && !existsSync(baseKeyPub) && !extConfig.plugins?.CapacitorUpdater?.publicKey) {
+    p.log.error(`Public key not found at the path ${baseKeyPub} or in ${config.app.extConfigFilePath}`)
     program.error('')
   }
-
-  if (!options.key && !existsSync(decryptStrategyType === PRIVATE_KEY_TYPE ? baseKey : baseKeyPub)) {
-    p.log.error(`Key not found at the path ${decryptStrategyType === PRIVATE_KEY_TYPE ? baseKey : baseKeyPub} or in ${config.app.extConfigFilePath}`)
-    program.error('')
-  }
-  const keyPath = options.key || hasPrivateKeyInConfig ? baseKey : decryptStrategyType === PRIVATE_KEY_TYPE ? baseKey : baseKeyPub
+  const keyPath = options.key || baseKeyPub
   // check if private exist
 
-  let key = hasPrivateKeyInConfig ? extConfig?.plugins?.CapacitorUpdater?.privateKey : hasDecryptStrategyInConfig ? extConfig?.plugins?.CapacitorUpdater?.decryptStrategy?.key : ''
+  let publicKey = extConfig?.plugins?.CapacitorUpdater?.publicKey;
 
-  if (!existsSync(keyPath) && !key) {
-    p.log.error(`Cannot find ${decryptStrategyType === PRIVATE_KEY_TYPE ? PRIVATE_KEY_TYPE : PUBLIC_KEY_TYPE} key ${keyPath} or as keyData option or in ${config.app.extConfigFilePath}`)
+  if (!existsSync(keyPath) && !publicKey) {
+    p.log.error(`Cannot find a public key at ${keyPath} or as keyData option or in ${config.app.extConfigFilePath}`)
     program.error('')
   }
   else if (existsSync(keyPath)) {
     // open with fs publicKey path
     const keyFile = readFileSync(keyPath)
-    key = keyFile.toString()
+    publicKey = keyFile.toString()
   }
 
   // let's doublecheck and make sure the key we are using is the right type based on the decryption strategy
-  if (key) {
-    if (decryptStrategyType === PRIVATE_KEY_TYPE && !key.startsWith('-----BEGIN RSA PRIVATE KEY-----')) {
-      p.log.error(`The decryption strategy is: 'private' and the decryption key provided is not a private key`)
-      program.error('')
-    } 
-    if (decryptStrategyType !== PRIVATE_KEY_TYPE && !key.startsWith('-----BEGIN RSA PUBLIC KEY-----')) {
-      p.log.error(`The decryption strategy is: 'public' and the decryption key provided is not a public key`)
-      program.error('')
-    }
+  if (publicKey && !publicKey.startsWith('-----BEGIN RSA PUBLIC KEY-----')) {
+    p.log.error(`the public key provided is not a valid RSA Public key`)
+    program.error('')
   }
 
   const zipFile = readFileSync(zipPath)
 
-  const decodedZip = decryptSource(zipFile, ivsessionKey, options.keyData ?? key ?? '',  decryptStrategyType === PRIVATE_KEY_TYPE ? PRIVATE_KEY_TYPE : PUBLIC_KEY_TYPE)
+  const decodedZip = decryptSource(zipFile, ivsessionKey, options.keyData ?? publicKey ?? '')
   // write decodedZip in a file
   writeFileSync(`${zipPath}_decrypted.zip`, decodedZip)
   p.log.success(`Decrypted zip file at ${zipPath}_decrypted.zip`)
